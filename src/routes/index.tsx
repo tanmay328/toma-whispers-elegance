@@ -4,6 +4,7 @@ import {
   ArrowDown,
   Check,
   Heart,
+  LogOut,
   Minus,
   PackageCheck,
   Plus,
@@ -11,6 +12,7 @@ import {
   ShieldCheck,
   ShoppingBag,
   SlidersHorizontal,
+  User,
   X,
 } from "lucide-react";
 
@@ -19,6 +21,8 @@ import lookOne from "@/assets/toma-look-1.jpg";
 import lookTwo from "@/assets/toma-look-2.jpg";
 import lookThree from "@/assets/toma-look-3.jpg";
 import { Button } from "@/components/ui/button";
+import { AuthDialog } from "@/components/auth-dialog";
+import { useAuth } from "@/lib/auth-context";
 import {
   Accordion,
   AccordionContent,
@@ -77,6 +81,8 @@ const swatches: Record<string, string> = {
 };
 
 function TomaStore() {
+  const { user, signOut } = useAuth();
+  const [authOpen, setAuthOpen] = useState(false);
   const [category, setCategory] = useState("All");
   const [material, setMaterial] = useState("");
   const [color, setColor] = useState("");
@@ -166,6 +172,28 @@ function TomaStore() {
             <Button variant="ghost" size="icon" onClick={() => setSearchOpen(true)} className="text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground" aria-label="Search">
               <Search />
             </Button>
+            {user ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => signOut()}
+                className="text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
+                aria-label={`Sign out of ${user.email}`}
+                title={user.email ?? undefined}
+              >
+                <LogOut />
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setAuthOpen(true)}
+                className="text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
+                aria-label="Sign in or create account"
+              >
+                <User />
+              </Button>
+            )}
             <Button variant="ghost" size="icon" className="relative text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground" aria-label={`Wishlist with ${wishlist.length} items`}>
               <Heart />
               {wishlist.length > 0 && <CountBadge count={wishlist.length} />}
@@ -280,6 +308,7 @@ function TomaStore() {
       <SearchDialog open={searchOpen} onOpenChange={setSearchOpen} query={query} setQuery={setQuery} results={filtered.slice(0, 5)} onOpen={openProduct} />
       <ProductDialog product={activeProduct} open={Boolean(activeProduct)} onOpenChange={(open) => !open && setActiveProduct(null)} selectedSize={selectedSize} setSelectedSize={setSelectedSize} onAdd={addToBag} onOpenProduct={openProduct} />
       <BagDrawer open={bagOpen} setOpen={setBagOpen} cart={cart} subtotal={subtotal} updateQuantity={updateQuantity} checkoutDone={checkoutDone} setCheckoutDone={setCheckoutDone} />
+      <AuthDialog open={authOpen} onOpenChange={setAuthOpen} />
     </main>
   );
 }
