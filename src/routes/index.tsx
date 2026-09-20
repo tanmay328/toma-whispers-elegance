@@ -23,6 +23,7 @@ import lookThree from "@/assets/toma-look-3.jpg";
 import { Button } from "@/components/ui/button";
 import { AuthDialog } from "@/components/auth-dialog";
 import { useAuth } from "@/lib/auth-context";
+import { usePersistentState } from "@/lib/use-persistent-state";
 import {
   Accordion,
   AccordionContent,
@@ -93,8 +94,8 @@ function TomaStore() {
   const [bagOpen, setBagOpen] = useState(false);
   const [activeProduct, setActiveProduct] = useState<Product | null>(null);
   const [selectedSize, setSelectedSize] = useState("");
-  const [wishlist, setWishlist] = useState<number[]>([]);
-  const [cart, setCart] = useState<CartLine[]>([]);
+  const [wishlist, setWishlist] = usePersistentState<number[]>("toma-wishlist", []);
+  const [cart, setCart] = usePersistentState<CartLine[]>("toma-cart", []);
   const [checkoutDone, setCheckoutDone] = useState(false);
 
   const filtered = useMemo(
