@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/lib/auth-context";
 
 type Mode = "login" | "signup" | "forgot";
@@ -13,6 +14,7 @@ export function AuthDialog({ open, onOpenChange }: { open: boolean; onOpenChange
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMeState] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [confirmSent, setConfirmSent] = useState(false);
@@ -22,6 +24,7 @@ export function AuthDialog({ open, onOpenChange }: { open: boolean; onOpenChange
     setFullName("");
     setEmail("");
     setPassword("");
+    setRememberMeState(true);
     setError(null);
     setConfirmSent(false);
     setResetSent(false);
@@ -59,7 +62,7 @@ export function AuthDialog({ open, onOpenChange }: { open: boolean; onOpenChange
 
     setSubmitting(true);
     const result =
-      mode === "signup" ? await signUp(email, password, fullName) : await signIn(email, password);
+      mode === "signup" ? await signUp(email, password, fullName) : await signIn(email, password, rememberMe);
     setSubmitting(false);
 
     if (result.error) {
@@ -135,6 +138,19 @@ export function AuthDialog({ open, onOpenChange }: { open: boolean; onOpenChange
                   )}
                 </div>
                 <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="rounded-none" />
+              </div>
+            )}
+
+            {mode === "login" && (
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="rememberMe"
+                  checked={rememberMe}
+                  onCheckedChange={(checked) => setRememberMeState(checked === true)}
+                />
+                <Label htmlFor="rememberMe" className="text-xs font-normal text-muted-foreground">
+                  Keep me signed in on this device
+                </Label>
               </div>
             )}
 
