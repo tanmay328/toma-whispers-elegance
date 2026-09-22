@@ -1,13 +1,6 @@
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn(
-    "Supabase environment variables are missing. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env file.",
-  );
-}
+export { supabase };
 
 const REMEMBER_FLAG = "toma-remember-me";
 
@@ -44,10 +37,3 @@ export function setRememberMe(remember: boolean) {
   window.localStorage.setItem(REMEMBER_FLAG, remember ? "true" : "false");
 }
 
-export const supabase = createClient(supabaseUrl ?? "", supabaseAnonKey ?? "", {
-  auth: {
-    storage: typeof window !== "undefined" ? authStorage : undefined,
-    persistSession: true,
-    autoRefreshToken: true,
-  },
-});
