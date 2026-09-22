@@ -122,7 +122,8 @@ function TomaStore() {
   };
 
   const addToBag = (product: Product, pickedSize?: string) => {
-    const finalSize = pickedSize || product.sizes[0];
+    const finalSize = pickedSize ?? product.sizes[0];
+    if (!finalSize) return;
     setCart((current) => {
       const match = current.find((line) => line.product.id === product.id && line.size === finalSize);
       if (match) {
