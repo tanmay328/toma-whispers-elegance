@@ -22,6 +22,7 @@ import lookTwo from "@/assets/toma-look-2.jpg";
 import lookThree from "@/assets/toma-look-3.jpg";
 import { Button } from "@/components/ui/button";
 import { AuthDialog } from "@/components/auth-dialog";
+import { CheckoutForm } from "@/components/checkout-form";
 import { useAuth } from "@/lib/auth-context";
 import { usePersistentState } from "@/lib/use-persistent-state";
 import {
@@ -96,7 +97,8 @@ function TomaStore() {
   const [selectedSize, setSelectedSize] = useState("");
   const [wishlist, setWishlist] = usePersistentState<number[]>("toma-wishlist", []);
   const [cart, setCart] = usePersistentState<CartLine[]>("toma-cart", []);
-  const [checkoutDone, setCheckoutDone] = useState(false);
+  const [bagStep, setBagStep] = useState<"cart" | "checkout" | "done">("cart");
+  const [placedOrderId, setPlacedOrderId] = useState<string | null>(null);
 
   const filtered = useMemo(
     () =>
@@ -308,7 +310,7 @@ function TomaStore() {
 
       <SearchDialog open={searchOpen} onOpenChange={setSearchOpen} query={query} setQuery={setQuery} results={filtered.slice(0, 5)} onOpen={openProduct} />
       <ProductDialog product={activeProduct} open={Boolean(activeProduct)} onOpenChange={(open) => !open && setActiveProduct(null)} selectedSize={selectedSize} setSelectedSize={setSelectedSize} onAdd={addToBag} onOpenProduct={openProduct} />
-      <BagDrawer open={bagOpen} setOpen={setBagOpen} cart={cart} subtotal={subtotal} updateQuantity={updateQuantity} checkoutDone={checkoutDone} setCheckoutDone={setCheckoutDone} />
+      <BagDrawer open={bagOpen} setOpen={setBagOpen} cart={cart} setCart={setCart} subtotal={subtotal} updateQuantity={updateQuantity} bagStep={bagStep} setBagStep={setBagStep} placedOrderId={placedOrderId} setPlacedOrderId={setPlacedOrderId} />
       <AuthDialog open={authOpen} onOpenChange={setAuthOpen} />
     </main>
   );
@@ -353,6 +355,149 @@ function ProductDialog({ product, open, onOpenChange, selectedSize, setSelectedS
 
 function SpecItem({ value, label, text }: { value: string; label: string; text: string }) { return <AccordionItem value={value}><AccordionTrigger className="text-[11px] uppercase tracking-[0.14em] hover:no-underline">{label}</AccordionTrigger><AccordionContent className="leading-6 text-muted-foreground">{text}</AccordionContent></AccordionItem>; }
 
-function BagDrawer({ open, setOpen, cart, subtotal, updateQuantity, checkoutDone, setCheckoutDone }: { open: boolean; setOpen: (open: boolean) => void; cart: CartLine[]; subtotal: number; updateQuantity: (index: number, delta: number) => void; checkoutDone: boolean; setCheckoutDone: (done: boolean) => void }) {
-  return <Sheet open={open} onOpenChange={(value) => { setOpen(value); if (!value) setCheckoutDone(false); }}><SheetContent className="flex w-full flex-col p-0 sm:max-w-md"><SheetHeader className="border-b border-border p-6 text-left"><SheetTitle className="font-serif text-3xl font-normal">Your bag</SheetTitle><SheetDescription>{cart.length ? `${cart.length} considered ${cart.length === 1 ? "piece" : "pieces"}` : "Your selection is empty"}</SheetDescription></SheetHeader>{checkoutDone ? <div className="flex flex-1 flex-col items-center justify-center px-8 text-center"><span className="flex size-16 items-center justify-center rounded-full bg-secondary"><Check className="size-7" /></span><h3 className="mt-6 font-serif text-4xl">Thank you.</h3><p className="mt-3 text-sm leading-6 text-muted-foreground">Your simulated order has been received. A confirmation would arrive by email.</p><Button onClick={() => setOpen(false)} className="mt-8 rounded-none">Continue exploring</Button></div> : cart.length ? <><div className="flex-1 space-y-5 overflow-y-auto p-6">{cart.map((line, index) => <div key={`${line.product.id}-${line.size}`} className="flex gap-4 border-b border-border pb-5"><img src={line.product.image} width={120} height={160} alt={line.product.name} className="h-32 w-24 object-cover" /><div className="flex flex-1 flex-col"><div className="flex justify-between gap-3"><div><p className="font-serif text-lg">{line.product.name}</p><p className="mt-1 text-xs text-muted-foreground">Size {line.size} · {line.product.color}</p></div><p className="text-xs">€{(line.product.price * line.quantity).toLocaleString()}</p></div><div className="mt-auto flex w-fit items-center border border-border"><Button variant="ghost" size="icon" onClick={() => updateQuantity(index, -1)} className="size-8 rounded-none" aria-label="Decrease quantity"><Minus /></Button><span className="w-8 text-center text-xs">{line.quantity}</span><Button variant="ghost" size="icon" onClick={() => updateQuantity(index, 1)} className="size-8 rounded-none" aria-label="Increase quantity"><Plus /></Button></div></div></div>)}</div><div className="border-t border-border p-6"><div className="mb-3 flex items-center gap-3 text-xs text-muted-foreground"><PackageCheck className="size-4" /><span>Complimentary luxury packaging</span></div><div className="mb-5 flex items-center gap-3 text-xs text-muted-foreground"><ShieldCheck className="size-4" /><span>Free insured express shipping</span></div><div className="flex justify-between border-t border-border pt-5"><span className="text-sm">Subtotal</span><span className="font-serif text-xl">€{subtotal.toLocaleString()}</span></div><p className="mt-1 text-[10px] text-muted-foreground">Taxes included. Duties calculated at checkout.</p><Button onClick={() => setCheckoutDone(true)} className="mt-5 h-12 w-full rounded-none text-[11px] uppercase tracking-[0.18em]">Secure checkout</Button></div></> : <div className="flex flex-1 flex-col items-center justify-center px-8 text-center"><ShoppingBag className="size-8 text-muted-foreground" /><p className="mt-5 font-serif text-3xl">An empty bag,<br />for now.</p><Button onClick={() => setOpen(false)} variant="outline" className="mt-7 rounded-none">Explore the collection</Button></div>}</SheetContent></Sheet>;
+function BagDrawer({
+  open,
+  setOpen,
+  cart,
+  setCart,
+  subtotal,
+  updateQuantity,
+  bagStep,
+  setBagStep,
+  placedOrderId,
+  setPlacedOrderId,
+}: {
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  cart: CartLine[];
+  setCart: (cart: CartLine[]) => void;
+  subtotal: number;
+  updateQuantity: (index: number, delta: number) => void;
+  bagStep: "cart" | "checkout" | "done";
+  setBagStep: (step: "cart" | "checkout" | "done") => void;
+  placedOrderId: string | null;
+  setPlacedOrderId: (id: string | null) => void;
+}) {
+  return (
+    <Sheet
+      open={open}
+      onOpenChange={(value) => {
+        setOpen(value);
+        if (!value) setBagStep("cart");
+      }}
+    >
+      <SheetContent className="flex w-full flex-col p-0 sm:max-w-md">
+        <SheetHeader className="border-b border-border p-6 text-left">
+          <SheetTitle className="font-serif text-3xl font-normal">
+            {bagStep === "checkout" ? "Delivery details" : "Your bag"}
+          </SheetTitle>
+          <SheetDescription>
+            {bagStep === "checkout"
+              ? "Cash on Delivery — pay when it arrives."
+              : cart.length
+                ? `${cart.length} considered ${cart.length === 1 ? "piece" : "pieces"}`
+                : "Your selection is empty"}
+          </SheetDescription>
+        </SheetHeader>
+
+        {bagStep === "done" ? (
+          <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
+            <span className="flex size-16 items-center justify-center rounded-full bg-secondary">
+              <Check className="size-7" />
+            </span>
+            <h3 className="mt-6 font-serif text-4xl">Order placed.</h3>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              Your order is confirmed for Cash on Delivery.
+              {placedOrderId && (
+                <>
+                  {" "}Reference: <span className="text-foreground">{placedOrderId.slice(0, 8)}</span>
+                </>
+              )}
+              {" "}Pay in cash when it arrives at your door.
+            </p>
+            <Button
+              onClick={() => {
+                setOpen(false);
+                setBagStep("cart");
+                setPlacedOrderId(null);
+              }}
+              className="mt-8 rounded-none"
+            >
+              Continue exploring
+            </Button>
+          </div>
+        ) : bagStep === "checkout" ? (
+          <CheckoutForm
+            cart={cart}
+            subtotal={subtotal}
+            onPlaced={(orderId) => {
+              setPlacedOrderId(orderId);
+              setCart([]);
+              setBagStep("done");
+            }}
+          />
+        ) : cart.length ? (
+          <>
+            <div className="flex-1 space-y-5 overflow-y-auto p-6">
+              {cart.map((line, index) => (
+                <div key={`${line.product.id}-${line.size}`} className="flex gap-4 border-b border-border pb-5">
+                  <img src={line.product.image} width={120} height={160} alt={line.product.name} className="h-32 w-24 object-cover" />
+                  <div className="flex flex-1 flex-col">
+                    <div className="flex justify-between gap-3">
+                      <div>
+                        <p className="font-serif text-lg">{line.product.name}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Size {line.size} · {line.product.color}
+                        </p>
+                      </div>
+                      <p className="text-xs">€{(line.product.price * line.quantity).toLocaleString()}</p>
+                    </div>
+                    <div className="mt-auto flex w-fit items-center border border-border">
+                      <Button variant="ghost" size="icon" onClick={() => updateQuantity(index, -1)} className="size-8 rounded-none" aria-label="Decrease quantity">
+                        <Minus />
+                      </Button>
+                      <span className="w-8 text-center text-xs">{line.quantity}</span>
+                      <Button variant="ghost" size="icon" onClick={() => updateQuantity(index, 1)} className="size-8 rounded-none" aria-label="Increase quantity">
+                        <Plus />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-border p-6">
+              <div className="mb-3 flex items-center gap-3 text-xs text-muted-foreground">
+                <PackageCheck className="size-4" />
+                <span>Complimentary luxury packaging</span>
+              </div>
+              <div className="mb-5 flex items-center gap-3 text-xs text-muted-foreground">
+                <ShieldCheck className="size-4" />
+                <span>Free insured express shipping</span>
+              </div>
+              <div className="flex justify-between border-t border-border pt-5">
+                <span className="text-sm">Subtotal</span>
+                <span className="font-serif text-xl">€{subtotal.toLocaleString()}</span>
+              </div>
+              <p className="mt-1 text-[10px] text-muted-foreground">Cash on Delivery available. Card payment coming soon.</p>
+              <Button onClick={() => setBagStep("checkout")} className="mt-5 h-12 w-full rounded-none text-[11px] uppercase tracking-[0.18em]">
+                Checkout
+              </Button>
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
+            <ShoppingBag className="size-8 text-muted-foreground" />
+            <p className="mt-5 font-serif text-3xl">
+              An empty bag,
+              <br />
+              for now.
+            </p>
+            <Button onClick={() => setOpen(false)} variant="outline" className="mt-7 rounded-none">
+              Explore the collection
+            </Button>
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
+  );
 }
