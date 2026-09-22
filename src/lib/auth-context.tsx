@@ -57,10 +57,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const resetPassword = async (email: string) => {
-    const options = typeof window !== "undefined"
-      ? { redirectTo: `${window.location.origin}/reset-password` }
-      : undefined;
-    const { error } = await supabase.auth.resetPasswordForEmail(email, options);
+    if (typeof window === "undefined") {
+      return { error: "Password reset is only available in the browser." };
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
     return { error: error?.message ?? null };
   };
 
